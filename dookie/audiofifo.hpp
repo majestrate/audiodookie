@@ -15,8 +15,7 @@ struct IAudioSource
   virtual bool Attach(const std::string & devname) = 0;
 
   /// poll for audio frames
-  /// frames is filled give its size()
-  virtual ssize_t Poll(std::vector<uint16_t> & left, std::vector<uint16_t> & right) = 0;
+  virtual ssize_t Poll(uint16_t * samps, size_t sz) = 0;
 
   /// get pollable fd
   virtual int GetFD() const = 0;

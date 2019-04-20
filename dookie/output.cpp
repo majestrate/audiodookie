@@ -7,50 +7,67 @@
 #include <cstring>
 #include <cairo.h>
 
+static void ConfigureSurface(void * data, zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t w, uint32_t h) {
+  std::cout << "configure layer surface" << std::endl;
+  static_cast<DisplayContext*>(data)->ConfigureLayerSurface(surface, serial, w, h);
+};
+
+static void CloseSurface(void *, zwlr_layer_surface_v1 *)
+{
+}
+
+static void GotScale(void *data, wl_output *, int32_t factor) {
+    std::cout << "got scale" << std::endl;
+    static_cast<DisplayContext *>(data)->scale = factor;
+};
+
+static void CloseOutput(void *, wl_output *)
+{
+};
+
+static void OnMode(void *,  wl_output*, uint32_t, int32_t, int32_t, int32_t)
+{
+};
+
+static void OnIDKLOL(void *,  wl_output*, int32_t, int32_t, int32_t, int32_t, int32_t, const char*, const char*, int32_t)
+{
+};
+
+wl_output_listener DisplayContext::output_listener = {
+  &OnIDKLOL,
+  &OnMode,
+  &CloseOutput,
+  &GotScale,
+};
+zwlr_layer_surface_v1_listener DisplayContext::layer_surface_listener = {
+  &ConfigureSurface,
+  &CloseSurface
+};
+
+
 DisplayContext::DisplayContext(Context * c, wl_output * out) :
   ctx(c),
   output(out)
 {
-  output_listener.scale = [](void *data, wl_output *, int32_t factor) {
-    static_cast<DisplayContext *>(data)->scale = factor;
-  };
-  output_listener.geometry = [](void*, wl_output*, int, int, int, int, int, const char*, const char*, int) {};
-  output_listener.mode = [](void*, wl_output*, unsigned int, int, int, int) {};
-  output_listener.done = [](void* data, wl_output *) {
-    static_cast<DisplayContext*>(data)->OutputDone();
-  };
-  layer_surface_listener.configure = [](void * data, zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t w, uint32_t h) {
-    static_cast<DisplayContext*>(data)->ConfigureLayerSurface(serial, w, h);
-  };
-  layer_surface_listener.closed = [](void * data, zwlr_layer_surface_v1 *)
-  {
-    static_cast<DisplayContext*>(data)->ClosedLayerSurface();
-  };
-  xdg_out_listener.name = [](void*, zxdg_output_v1*, const char*) {};
-  xdg_out_listener.description =[](void*, zxdg_output_v1*, const char*) {};
-  xdg_out_listener.done = [](void * data, zxdg_output_v1 *)
-  {
-    static_cast<DisplayContext*>(data)->HandleXDGDone();
-  };
-  xdg_out_listener.logical_position = [](void*, zxdg_output_v1*, int, int) {};
-  xdg_out_listener.logical_size = [](void*, zxdg_output_v1*, int, int) {};
 }
 
 void
 DisplayContext::ClosedLayerSurface()
 {
+  std::cout << "closed layer surface" << std::endl;
   zwlr_layer_surface_v1_destroy(layer_surface);
 }
 
-void
-DisplayContext::OutputDone()
-{
-  
-}
 
 bool
 DisplayContext::Init()
 {
+  std::cout << "init display" << std::endl;
+  if(ctx->wl.layer_shell == nullptr)
+  {
+    std::cout << "no layer shell" << std::endl;
+                                     return false;
+  }
   wl_output_add_listener(output, &output_listener, this);
   surface = wl_compositor_create_surface(ctx->wl.compositor);
   if(surface == nullptr)
@@ -66,18 +83,22 @@ DisplayContext::Init()
   }
   wl_surface_set_input_region(surface, input_region);
   wl_region_destroy(input_region);
-  layer_surface = zwlr_layer_shell_v1_get_layer_surface(ctx->wl.layer_shell, surface, output, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "wallpaper");
+  
+  layer_surface = zwlr_layer_shell_v1_get_layer_surface(ctx->wl.layer_shell, surface, output, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "dookie");
   if(layer_surface == nullptr)
   {
     std::cout << "failed to create layer surface for output" << std::endl;
     return false;
   }
+  /*
   zxdg_output_manager_v1 * output_manager = ctx->wl.output_manager;
   if(output_manager)
   {
+    std::cout << "have output manager" << std::endl;
     xdg_out = zxdg_output_manager_v1_get_xdg_output(output_manager, output);
     zxdg_output_v1_add_listener(xdg_out, &xdg_out_listener, this);
   }
+  */
   zwlr_layer_surface_v1_set_size(layer_surface, 0, 0);
 	zwlr_layer_surface_v1_set_anchor(layer_surface,
 			ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
@@ -99,7 +120,7 @@ void DisplayContext::HandleXDGDone()
   xdg_out = nullptr;
 }
 
-DisplayContext::~DisplayContext()
+void DisplayContext::OutputDone()
 { 
   if (surface) 
 		wl_surface_destroy(surface);
@@ -108,8 +129,10 @@ DisplayContext::~DisplayContext()
 		zwlr_layer_surface_v1_destroy(layer_surface);
 }
 
-void DisplayContext::ConfigureLayerSurface(uint32_t serial, uint32_t w, uint32_t h)
+void DisplayContext::ConfigureLayerSurface(zwlr_layer_surface_v1 * lsurface, uint32_t serial, uint32_t w, uint32_t h)
 {
+  layer_surface = lsurface;
+  std::cout << "configure layer surface" << std::endl;
   width = w;
   height = h;
   wl_region * opaque = wl_compositor_create_region(ctx->wl.compositor);
@@ -119,6 +142,8 @@ void DisplayContext::ConfigureLayerSurface(uint32_t serial, uint32_t w, uint32_t
   zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
   if(CreateBuffers())
     std::cout << "layer surface configured" << std::endl;
+  else
+    std::cout << " failed to make buffers" << std::endl;
 }
 
 
@@ -139,21 +164,26 @@ static int pid_shm_open(const char * prefix, int flags, mode_t mode)
 
 void DisplayContext::BeforeDraw()
 {
-  wl_surface_set_buffer_scale(surface, scale);
+  if(scale && surface && buffer)
+  {
+    wl_surface_set_buffer_scale(surface, scale);
+  }
 }
 
 void DisplayContext::DamageFull()
 {
-  wl_surface_attach(surface, buffer, 0, 0);
-  wl_surface_damage(surface, 0, 0, width, height);
-  wl_surface_commit(surface);
+  if(surface && buffer)
+  {
+    wl_surface_attach(surface, buffer, 0, 0);
+    wl_surface_damage(surface, 0, 0, width, height);
+    wl_surface_commit(surface);
+  }
 }
 
 
 bool DisplayContext::CreateBuffers()
 {
-  if(buffer)
-    return true;
+  
   uint32_t stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, width);
   size_t sz = stride * height;
   if(sz < 1)

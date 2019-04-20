@@ -30,9 +30,6 @@ struct Context
                       uint32_t version);
 
   Wayland wl;
-  uint32_t width;
-  uint32_t height;
-  int32_t scale;
   
   void Stop();
   

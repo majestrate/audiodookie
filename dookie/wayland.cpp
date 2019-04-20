@@ -67,13 +67,20 @@ void Wayland::Register(Context * ctx)
   assert(regis != nullptr);
   wl_registry_add_listener(regis, &listener, ctx);
   ctx->RoundTrip();
+  if(compositor && layer_shell && shm)
+    ctx->RoundTrip();
+  else
+    std::cout << " failed to set up " << std::endl;
 }
 
 bool Wayland::CreateOutput(Context * ctx, wl_output * output)
 {
   outputs.emplace_back(ctx, output);
   if(outputs.back().Init())
+  {
     return true;
+  }
+
   outputs.pop_back();
   return false;
 }

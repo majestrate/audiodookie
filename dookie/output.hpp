@@ -13,7 +13,7 @@ struct Context;
 struct DisplayContext
 {
 
-  void ConfigureLayerSurface(uint32_t serial, uint32_t w, uint32_t h);
+  void ConfigureLayerSurface(zwlr_layer_surface_v1 * surface, uint32_t serial, uint32_t w, uint32_t h);
   void ClosedLayerSurface();
   void HandleXDGDone();
   
@@ -26,16 +26,15 @@ struct DisplayContext
   zxdg_output_v1 * xdg_out = nullptr;
   Context * ctx = nullptr;
   
-  zxdg_output_v1_listener xdg_out_listener;
-  wl_output_listener output_listener;
-  zwlr_layer_surface_v1_listener layer_surface_listener;
+  static zxdg_output_v1_listener xdg_out_listener;
+  static wl_output_listener output_listener;
+  static zwlr_layer_surface_v1_listener layer_surface_listener;
 
   uint32_t width = 0;
   uint32_t height = 0;
   int32_t scale  = 0;
 
   DisplayContext(Context * context, wl_output * out);
-  ~DisplayContext();
   
   bool Init();
   bool CreateBuffers();

@@ -19,12 +19,10 @@ int main(int argc, char * argv[])
   }
 
   ctx.Register();
-  ctx.RoundTrip();
   if(!ctx.SetUpMainLoop())
   {
     std::cout << "failed to set up mainloop" << std::endl;
     return 2;
   }
-  
   return ctx.RunMainLoop();
 }

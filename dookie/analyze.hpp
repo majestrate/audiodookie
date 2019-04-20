@@ -25,7 +25,7 @@ struct Analyzer
   Analyzer(size_t N);
   ~Analyzer();
 
-  void Analyze(const uint16_t * frames, std::vector<double> & out);
+  void Analyze(uint16_t * frames, std::vector<double> & out);
 
 private:
   std::vector<double> m_input;

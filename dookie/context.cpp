@@ -6,9 +6,9 @@
 #include <unistd.h>
 #include <iostream>
 
-static constexpr size_t AudioBufferSize = 1024 * 4;
+static constexpr size_t AudioBufferSize = 1024 * 8;
 
-Context::Context(const char * fifopath) : audio(nullptr), analyzer(AudioBufferSize / 2), timerfd(timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC)), _run(false), audiodev(fifopath)
+Context::Context(const char * fifopath) : audio(nullptr), analyzer(1024 * 2), timerfd(timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC)), _run(false), audiodev(fifopath)
 {
 }
 
@@ -41,6 +41,7 @@ void Context::TryOpenAudio()
 {
   if(audio)
     return;
+  std::cout << "try open " << audiodev << std::endl;
   audio = IAudioSource::Create();
   if(audio->Attach(audiodev))
   {
@@ -91,9 +92,9 @@ int Context::RunMainLoop()
   set_timer_milliseconds(timerfd, 100);
   _run = true;
   // audio buffer
-  std::vector<uint16_t> left(AudioBufferSize / 2);
-  std::vector<uint16_t> right(AudioBufferSize / 2);
-  std::vector<double> freqs(AudioBufferSize / 2);
+  std::vector<uint16_t> samps(AudioBufferSize);
+  std::vector<double> freqs(AudioBufferSize);
+  uint16_t * ptr = samps.data();
   while(_run)
   {
     while (wl_display_prepare_read(wl.display) != 0)
@@ -111,7 +112,6 @@ int Context::RunMainLoop()
     }
     else
       polled = poll(events, 2, -1);
-    
 		if (polled < 0)
     {
 			wl_display_cancel_read(wl.display);
@@ -123,6 +123,7 @@ int Context::RunMainLoop()
     {
 			if (wl_display_read_events(wl.display) != 0)
       {
+        std::cout << "wl_display read events != 0" << std::endl;
 				if (errno == 104)
         {
 					// Compositor disconnected us
@@ -144,12 +145,24 @@ int Context::RunMainLoop()
     {
       if (events[_AUDIO_EVENT].revents & POLLIN)
       {
-        ssize_t frameCount = audio->Poll(left, right);
-        if(frameCount == AudioBufferSize)
+        const auto end =  &samps[samps.size() - 1];
+        const auto dlt = end - ptr;
+        if(dlt)
         {
-          analyzer.Analyze(left.data(), freqs);
+          ssize_t frameCount = audio->Poll(ptr, dlt);
+          if(frameCount > 0)
+          {
+            ptr += frameCount;
+            std::cout << frameCount << " " << dlt << std::endl;
+          }
+        }
+        if(ptr <= end - 1)
+        {
+          ptr = samps.data();
+          analyzer.Analyze(ptr, freqs);
           for(auto & out : wl.outputs)
-            visualizer.Visualize(left, freqs, out);
+            visualizer.Visualize(samps, freqs, out);
+          std::fill(samps.begin(), samps.end(), 0);
         }
       }
     }
@@ -191,7 +204,9 @@ void Context::HandleRegistry(wl_registry * reg,
   {
 		wl_output * output = static_cast<wl_output*>(wl_registry_bind(
                                                    reg, name, &wl_output_interface, 3));
-		wl.CreateOutput(this, output);
+		if(wl.CreateOutput(this, output))
+      std::cout << "we created an output" << std::endl;
+    
 	}
 	else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0)
   {

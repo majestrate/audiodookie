@@ -37,10 +37,11 @@ void ComplexArray::Put(const uint16_t * frames)
   }
 }
 
-void Analyzer::Analyze(const uint16_t *frames, std::vector<double> & out)
+void Analyzer::Analyze(uint16_t *frames, std::vector<double> & out)
 {
   for(size_t idx = 0; idx < m_input.size(); idx ++)
   {
+    frames[idx] = (frames[idx] - (65636/2) );
     m_input[idx] = frames[idx] / 65636.0;
   }
   fftw_execute(m_plan);

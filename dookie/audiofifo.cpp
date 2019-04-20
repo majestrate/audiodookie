@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
+#include <iostream>
 
 
 
@@ -26,34 +27,10 @@ struct FifoAudio : public IAudioSource
     return fd != -1;
   }
 
-  ssize_t Poll(std::vector<uint16_t> & left, std::vector<uint16_t> &right) override
+  ssize_t Poll(uint16_t * samps, size_t sz) override
   {
-    if(left.size() == 0)
-      return -1;
-    if(left.size() != right.size())
-      return -1;
-    size_t expect = left.size() + right.size();
-    size_t amount = 0;
-    size_t left_idx = 0;
-    size_t right_idx = 0;
-    while(expect)
-    {
-      if(expect % 2)
-      {
-        if(::read(fd, left.data() + left_idx, sizeof(uint16_t)) == -1)
-          return 0;
-        amount ++;
-        left_idx ++;
-      }
-      else
-      {
-        if(::read(fd, right.data() + right_idx, sizeof(uint16_t)) == -1)
-          return 0;
-        amount ++;
-        right_idx ++;
-      }
-      expect -- ;
-    }
+    auto amount = ::read(fd, samps, sz);
+    if (amount > 0) amount /= sizeof(uint16_t);
     return amount;
   }
   
