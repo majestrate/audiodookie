@@ -5,8 +5,10 @@
 
 int main(int argc, char * argv[])
 {
-  static std::string dev = "pulse:default";
-  Context ctx("", dev.c_str());
+  const char * dev = "pulse:default";
+  if(argc > 1)
+    dev = argv[1];
+  Context ctx("", dev);
 
   if(!ctx.Connect())
   {
