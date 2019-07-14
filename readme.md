@@ -19,6 +19,6 @@ works with [sway](https://github.com/swaywm/sway) (probably)
 
 standard cmake build process
 
-    $ mkdir -p build && cmake .. && make 
+    $ mkdir -p build && cd build && cmake .. && make 
     
     
