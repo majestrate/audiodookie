@@ -184,7 +184,7 @@ static int pid_shm_open(const char * prefix, int flags, mode_t mode)
 
 void DisplayContext::BeforeDraw()
 {
-  if(scale && surface && buffer)
+  if(surface && buffer)
   {
     wl_surface_set_buffer_scale(surface, scale);
   }

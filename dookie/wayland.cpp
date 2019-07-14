@@ -41,7 +41,9 @@ void Wayland::HandleRegistry(void * data,
                              const char * iface,
                              uint32_t version)
 {
-  static_cast<Context *>(data)->HandleRegistry(reg, name, iface, version);
+  auto * ctx = static_cast<Context *>(data);
+  ctx->HandleRegistry(reg, name, iface, version);
+  ctx->RoundTrip();
 }
 
 
@@ -74,7 +76,7 @@ bool Wayland::CreateOutput(Context * ctx, wl_output * output)
   {
     return true;
   }
-
+  std::cout << "failed to make output" << std::endl;
   outputs.pop_back();
   return false;
 }

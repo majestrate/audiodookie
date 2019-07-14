@@ -15,7 +15,6 @@ void Visualizer::Visualize(const std::vector<uint8_t> & samps, const std::vector
     for(size_t idx = 1; idx < numAmps ; ++idx)
       amp += abs(freqs[idx]);
     amp /= numAmps;
-    std::cout << amp << std::endl;
     if(amp > 20)
     {
       R = 1;

@@ -47,9 +47,6 @@ struct FifoAudio : public IAudioSource
 struct PA_Fifo : public IAudioSource
 {
   int fds[2] = {-1, -1};
-
-  uint8_t buffer[128];
-  pa_simple * s = nullptr;
   std::thread * m_thread = nullptr;
 
   PA_Fifo()
@@ -71,17 +68,32 @@ struct PA_Fifo : public IAudioSource
 
   void Run()
   {
-    int err;
+    uint8_t buffer[1024] = {0};
+    int err = 0;
+    pa_sample_spec ss;
+    ss.channels = 1;
+    ss.rate = 44100;
+    ss.format = PA_SAMPLE_U8;
+    auto s = ::pa_simple_new(nullptr, "audiodookie", PA_STREAM_RECORD, nullptr, "wallpaper", &ss, nullptr, nullptr, &err);
+    if(s == nullptr)
+    {
+      std::cout << "failed to create pa_simple" << std::endl;
+      return;
+    }
+    
     while(::pa_simple_read(s, buffer, sizeof(buffer), &err) == 0)
     {
-      if(::write(fds[1], buffer, sizeof(buffer)) == -1)
+      if(err == PA_OK)
       {
-        std::cout << "bad write on pipe" << std::endl;
-        break;
-      }
-      if(::pa_simple_flush(s, &err))
-      {
-        std::cout << "bad pa flush" << std::endl;
+        if(::write(fds[1], buffer, sizeof(buffer)) == -1)
+        {
+          std::cout << "bad write on pipe" << std::endl;
+          break;
+        }
+        if(::pa_simple_flush(s, &err))
+        {
+          std::cout << "bad pa flush" << std::endl;
+        }
       }
     }
     ::pa_simple_free(s);
@@ -95,19 +107,8 @@ struct PA_Fifo : public IAudioSource
       if(pipe(fds) == -1)
         return false;
     }
-    int err;
-    pa_sample_spec ss;
-    ss.channels = 1;
-    ss.rate = 44100;
-    ss.format = PA_SAMPLE_U8;
     // std::string dev = name.substr(::strlen("pulse:") );
     // std::cout << "open " << dev << std::endl;
-    s = ::pa_simple_new(nullptr, "audiodookie", PA_STREAM_RECORD, nullptr, "wallpaper", &ss, nullptr, nullptr, &err);
-    if(s == nullptr)
-    {
-      
-      return false;
-    }
     m_thread = new std::thread(std::bind(&PA_Fifo::Run, this));
     return true;
   }

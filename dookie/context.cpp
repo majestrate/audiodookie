@@ -151,21 +151,21 @@ int Context::RunMainLoop()
     {
       if (events[_AUDIO_EVENT].revents & POLLIN)
       {
-        const auto dlt = (ptr - samps.data()) + samps.size();
+        auto dlt = (samps.data() + samps.size()) - ptr;
         if(dlt)
         {
-          ssize_t frameCount = audio->Poll(ptr, samps.size());
+          ssize_t frameCount = audio->Poll(ptr, dlt);
           if(frameCount > 0)
           {
             ptr += frameCount;
+            dlt = (samps.data() + samps.size()) - ptr;
           }
         }
         if(dlt == 0)
         {
-          ptr = samps.data();
           if(wl.outputs.size())
           {
-            analyzer.Analyze(ptr, freqs);
+            analyzer.Analyze(samps.data(), freqs);
             for(auto & out : wl.outputs)
               visualizer.Visualize(samps, freqs, out);
             RoundTrip();
@@ -175,6 +175,7 @@ int Context::RunMainLoop()
             std::cout << "no outputs" << std::endl;
           }
           std::fill(samps.begin(), samps.end(), 0);
+          ptr = samps.data();
         }
       }
     }
@@ -204,6 +205,7 @@ void Context::HandleRegistry(wl_registry * reg,
                     const char * interface,
                     uint32_t ver)
 {
+  std::cout << "handle registry: " << interface << std::endl;
   if(strcmp(interface, wl_compositor_interface.name) == 0)
   {
     wl.compositor = static_cast<wl_compositor*>(wl_registry_bind(reg, name, &wl_compositor_interface, 3));
@@ -220,7 +222,11 @@ void Context::HandleRegistry(wl_registry * reg,
     {
       std::cout << "we created an output" << std::endl;
     }
-    
+    else
+    {
+      std::cout << "failed to create output" << std::endl;
+      ::exit(1);
+    }
 	}
 	else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0)
   {
