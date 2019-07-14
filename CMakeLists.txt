@@ -24,7 +24,7 @@ find_package(Cairo)
 
 include_directories(${FFTW_INCLUDE_DIRS} ${CAIRO_INCLUDE_DIRS})
 
-set(LIBS ${Wayland_LIBRARIES} ${FFTW_LIBRARIES} ${PulseAudio_LIBRARIES} ${CAIRO_LIBRARIES} rt)
+set(LIBS ${Wayland_LIBRARIES} ${FFTW_LIBRARIES} ${PulseAudio_LIBRARIES} pulse-simple ${CAIRO_LIBRARIES} rt pthread)
 
 set(DOOKIE_LIB dookie)
 set(DOOKIE_SRC

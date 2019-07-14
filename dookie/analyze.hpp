@@ -14,7 +14,7 @@ struct ComplexArray
   ~ComplexArray();
 
   void ToVector(std::vector<double> & out) const;
-  void Put(const uint16_t * frames);
+  void Put(const uint8_t * frames);
 
   operator fftw_complex * () { return data; };
   
@@ -25,7 +25,7 @@ struct Analyzer
   Analyzer(size_t N);
   ~Analyzer();
 
-  void Analyze(uint16_t * frames, std::vector<double> & out);
+  void Analyze(uint8_t * frames, std::vector<double> & out);
 
 private:
   std::vector<double> m_input;

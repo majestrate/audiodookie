@@ -6,9 +6,8 @@
 #include <unistd.h>
 #include <iostream>
 
-static constexpr size_t AudioBufferSize = 1024 * 8;
 
-Context::Context(const char * fifopath) : audio(nullptr), analyzer(1024 * 2), timerfd(timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC)), _run(false), audiodev(fifopath)
+Context::Context(const char * display, const char * fifopath) : audio(nullptr), analyzer(AudioBufferSize), timerfd(timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC)), _run(false), monitor(display), audiodev(fifopath)
 {
 }
 
@@ -29,6 +28,7 @@ void Context::RoundTrip()
 void Context::Register()
 {
   wl.Register(this);
+  RoundTrip();
 }
 
 
@@ -42,7 +42,7 @@ void Context::TryOpenAudio()
   if(audio)
     return;
   std::cout << "try open " << audiodev << std::endl;
-  audio = IAudioSource::Create();
+  audio = CreateAudioByName(audiodev);
   if(audio->Attach(audiodev))
   {
     std::cout << "we have audio" << std::endl;
@@ -78,6 +78,12 @@ void Context::Stop()
   wl.Close();
 }
 
+bool 
+Context::WantsDisplay(const char * display) const
+{
+  return strcmp(display, monitor) == 0;
+}
+
 int Context::RunMainLoop()
 {
   constexpr size_t _WAYLAND_EVENT = 0; 
@@ -92,9 +98,9 @@ int Context::RunMainLoop()
   set_timer_milliseconds(timerfd, 100);
   _run = true;
   // audio buffer
-  std::vector<uint16_t> samps(AudioBufferSize);
-  std::vector<double> freqs(AudioBufferSize);
-  uint16_t * ptr = samps.data();
+  std::vector<uint8_t> samps(AudioBufferSize);
+  std::vector<double> freqs(AudioBufferSize / 2);
+  uint8_t * ptr = samps.data();
   while(_run)
   {
     while (wl_display_prepare_read(wl.display) != 0)
@@ -134,7 +140,7 @@ int Context::RunMainLoop()
 							strerror(errno));
 				}
 				_run = false;
-			}
+      }
 		}
 		else
 			wl_display_cancel_read(wl.display);
@@ -145,23 +151,29 @@ int Context::RunMainLoop()
     {
       if (events[_AUDIO_EVENT].revents & POLLIN)
       {
-        const auto end =  &samps[samps.size() - 1];
-        const auto dlt = end - ptr;
+        const auto dlt = (ptr - samps.data()) + samps.size();
         if(dlt)
         {
-          ssize_t frameCount = audio->Poll(ptr, dlt);
+          ssize_t frameCount = audio->Poll(ptr, samps.size());
           if(frameCount > 0)
           {
             ptr += frameCount;
-            std::cout << frameCount << " " << dlt << std::endl;
           }
         }
-        if(ptr <= end - 1)
+        if(dlt == 0)
         {
           ptr = samps.data();
-          analyzer.Analyze(ptr, freqs);
-          for(auto & out : wl.outputs)
-            visualizer.Visualize(samps, freqs, out);
+          if(wl.outputs.size())
+          {
+            analyzer.Analyze(ptr, freqs);
+            for(auto & out : wl.outputs)
+              visualizer.Visualize(samps, freqs, out);
+            RoundTrip();
+          }
+          else
+          {
+            std::cout << "no outputs" << std::endl;
+          }
           std::fill(samps.begin(), samps.end(), 0);
         }
       }
@@ -203,9 +215,11 @@ void Context::HandleRegistry(wl_registry * reg,
 	else if (strcmp(interface, wl_output_interface.name) == 0)
   {
 		wl_output * output = static_cast<wl_output*>(wl_registry_bind(
-                                                   reg, name, &wl_output_interface, 3));
+                                                   reg, name, &wl_output_interface, ver));
 		if(wl.CreateOutput(this, output))
+    {
       std::cout << "we created an output" << std::endl;
+    }
     
 	}
 	else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0)

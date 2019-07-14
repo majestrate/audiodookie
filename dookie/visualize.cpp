@@ -2,13 +2,13 @@
 #include "context.hpp"
 #include <iostream>
 
-void Visualizer::Visualize(const std::vector<uint16_t> & samps, const std::vector<double> & freqs, DisplayContext & ctx)
+void Visualizer::Visualize(const std::vector<uint8_t> & samps, const std::vector<double> & freqs, DisplayContext & ctx)
 {
   // this is a heavy as shit codepath yo
   if(ctx.cairo)
   {
     ctx.BeforeDraw();
-    cairo_surface_flush(ctx.cairo_surface);
+    
     double amp = 0;
     double sum = 1.0;
     const size_t numAmps = 6;
@@ -23,7 +23,6 @@ void Visualizer::Visualize(const std::vector<uint16_t> & samps, const std::vecto
     else
       R = std::max(0.0, R - 0.1);
     cairo_set_source_rgb(ctx.cairo, R, 0, 0);
-    
     cairo_rectangle(ctx.cairo, 0,0, ctx.width,ctx.height);
     cairo_fill(ctx.cairo);
     for(const auto & samp : samps)
@@ -47,7 +46,6 @@ void Visualizer::Visualize(const std::vector<uint16_t> & samps, const std::vecto
       cairo_stroke(ctx.cairo);
       amp += freq;
     }
-    //cairo_paint(ctx.cairo);
     cairo_surface_mark_dirty(ctx.cairo_surface);
     ctx.DamageFull();
   }

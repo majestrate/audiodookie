@@ -28,7 +28,7 @@ void ComplexArray::ToVector(std::vector<double> & out) const
     out[idx-1] = abs(data[idx][0]); // real
 }
 
-void ComplexArray::Put(const uint16_t * frames)
+void ComplexArray::Put(const uint8_t * frames)
 {
   for(size_t idx = 0; idx < sz; ++idx)
   {
@@ -37,12 +37,11 @@ void ComplexArray::Put(const uint16_t * frames)
   }
 }
 
-void Analyzer::Analyze(uint16_t *frames, std::vector<double> & out)
+void Analyzer::Analyze(uint8_t *frames, std::vector<double> & out)
 {
   for(size_t idx = 0; idx < m_input.size(); idx ++)
   {
-    frames[idx] = (frames[idx] - (65636/2) );
-    m_input[idx] = frames[idx] / 65636.0;
+    m_input[idx] = frames[idx] / 255.0;
   }
   fftw_execute(m_plan);
   m_output.ToVector(out);

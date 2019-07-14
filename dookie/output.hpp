@@ -5,6 +5,7 @@
 #include "wlr-layer-shell-unstable-v1-client-protocol.h"
 #include "xdg-output-unstable-v1-client-protocol.h"
 #include <cairo.h>
+#include <string>
 
 struct Wayland;
 struct Context;
@@ -33,6 +34,8 @@ struct DisplayContext
   uint32_t width = 0;
   uint32_t height = 0;
   int32_t scale  = 0;
+  bool attached = false;
+  std::string name;
 
   DisplayContext(Context * context, wl_output * out);
   

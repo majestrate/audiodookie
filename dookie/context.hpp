@@ -7,7 +7,7 @@
 
 struct Context
 {
-  Context(const char * fifopath);
+  Context(const char * monitorName, const char * fifopath);
   ~Context();
 
   /// connect to wayland display
@@ -33,6 +33,9 @@ struct Context
   
   void Stop();
   
+  bool 
+  WantsDisplay(const char * name) const;
+
 private:
 
   void TryOpenAudio();
@@ -44,6 +47,7 @@ private:
   Visualizer visualizer;
   int timerfd;
   bool _run;
+  const char * monitor;
   const char * audiodev;
 };
 

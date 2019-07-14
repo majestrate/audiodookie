@@ -33,12 +33,39 @@ static void OnIDKLOL(void *,  wl_output*, int32_t, int32_t, int32_t, int32_t, in
 {
 };
 
+static void XDGName(void * data, struct zxdg_output_v1 *, const char * name)
+{
+  static_cast<DisplayContext*>(data)->name = name;
+}
+
+static void XDGDesc(void *, struct zxdg_output_v1 *, const char *)
+{
+}
+
+static void XDGDone(void *, struct zxdg_output_v1 * out)
+{
+  zxdg_output_v1_destroy(out);
+}
+
+static void XDGNOP(void * , struct zxdg_output_v1 *, int32_t, int32_t) {}
+
+
+
 wl_output_listener DisplayContext::output_listener = {
   &OnIDKLOL,
   &OnMode,
   &CloseOutput,
   &GotScale,
 };
+
+zxdg_output_v1_listener DisplayContext::xdg_out_listener = {
+  &XDGNOP,
+  &XDGNOP,
+  &XDGDone,
+  &XDGName,
+  &XDGDesc
+};
+
 zwlr_layer_surface_v1_listener DisplayContext::layer_surface_listener = {
   &ConfigureSurface,
   &CloseSurface
@@ -58,7 +85,6 @@ DisplayContext::ClosedLayerSurface()
   zwlr_layer_surface_v1_destroy(layer_surface);
 }
 
-
 bool
 DisplayContext::Init()
 {
@@ -69,12 +95,14 @@ DisplayContext::Init()
                                      return false;
   }
   wl_output_add_listener(output, &output_listener, this);
+  ctx->RoundTrip();
   surface = wl_compositor_create_surface(ctx->wl.compositor);
   if(surface == nullptr)
   {
     std::cout << "could not create surface for output" << std::endl;
     return false;
   }
+  ctx->RoundTrip();
   wl_region * input_region = wl_compositor_create_region(ctx->wl.compositor);
   if(input_region == nullptr)
   {
@@ -83,22 +111,12 @@ DisplayContext::Init()
   }
   wl_surface_set_input_region(surface, input_region);
   wl_region_destroy(input_region);
-  
   layer_surface = zwlr_layer_shell_v1_get_layer_surface(ctx->wl.layer_shell, surface, output, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "dookie");
   if(layer_surface == nullptr)
   {
     std::cout << "failed to create layer surface for output" << std::endl;
     return false;
   }
-  /*
-  zxdg_output_manager_v1 * output_manager = ctx->wl.output_manager;
-  if(output_manager)
-  {
-    std::cout << "have output manager" << std::endl;
-    xdg_out = zxdg_output_manager_v1_get_xdg_output(output_manager, output);
-    zxdg_output_v1_add_listener(xdg_out, &xdg_out_listener, this);
-  }
-  */
   zwlr_layer_surface_v1_set_size(layer_surface, 0, 0);
 	zwlr_layer_surface_v1_set_anchor(layer_surface,
 			ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
@@ -109,7 +127,6 @@ DisplayContext::Init()
 	zwlr_layer_surface_v1_add_listener(layer_surface,
 			&layer_surface_listener, this);
   wl_surface_commit(surface);
-  ctx->RoundTrip();
   return true;
 }
 
@@ -124,7 +141,6 @@ void DisplayContext::OutputDone()
 { 
   if (surface) 
 		wl_surface_destroy(surface);
-	
 	if (layer_surface) 
 		zwlr_layer_surface_v1_destroy(layer_surface);
 }
@@ -133,6 +149,7 @@ void DisplayContext::ConfigureLayerSurface(zwlr_layer_surface_v1 * lsurface, uin
 {
   layer_surface = lsurface;
   std::cout << "configure layer surface" << std::endl;
+ 
   width = w;
   height = h;
   wl_region * opaque = wl_compositor_create_region(ctx->wl.compositor);
@@ -141,9 +158,12 @@ void DisplayContext::ConfigureLayerSurface(zwlr_layer_surface_v1 * lsurface, uin
   wl_region_destroy(opaque);
   zwlr_layer_surface_v1_ack_configure(layer_surface, serial);
   if(CreateBuffers())
+  {
     std::cout << "layer surface configured" << std::endl;
+  }
   else
     std::cout << " failed to make buffers" << std::endl;
+  ctx->RoundTrip();
 }
 
 
@@ -212,5 +232,6 @@ bool DisplayContext::CreateBuffers()
   cairo_surface = cairo_image_surface_create_for_data(static_cast<uint8_t*>(data), CAIRO_FORMAT_ARGB32, width, height, stride);
   cairo = cairo_create(cairo_surface);
   std::cout << "made buffer of size " << sz << std::endl;
+  ctx->RoundTrip();
   return true;
 }

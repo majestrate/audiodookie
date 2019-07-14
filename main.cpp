@@ -5,12 +5,8 @@
 
 int main(int argc, char * argv[])
 {
-  if(argc < 3)
-  {
-    std::cout << "usage: "<< argv[0] << " <output> <fifopath>" << std::endl;
-    return 1;
-  }
-  Context ctx(argv[2]);
+  static std::string dev = "pulse:default";
+  Context ctx("", dev.c_str());
 
   if(!ctx.Connect())
   {
@@ -19,6 +15,7 @@ int main(int argc, char * argv[])
   }
 
   ctx.Register();
+  ctx.RoundTrip();
   if(!ctx.SetUpMainLoop())
   {
     std::cout << "failed to set up mainloop" << std::endl;

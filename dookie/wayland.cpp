@@ -62,15 +62,9 @@ void Wayland::HandleRemove(void * data,
 
 void Wayland::Register(Context * ctx)
 {
-  if(regis == nullptr)
-    regis = wl_display_get_registry(display);
-  assert(regis != nullptr);
+  regis = wl_display_get_registry(display);
   wl_registry_add_listener(regis, &listener, ctx);
   ctx->RoundTrip();
-  if(compositor && layer_shell && shm)
-    ctx->RoundTrip();
-  else
-    std::cout << " failed to set up " << std::endl;
 }
 
 bool Wayland::CreateOutput(Context * ctx, wl_output * output)
