@@ -99,7 +99,7 @@ int Context::RunMainLoop()
   _run = true;
   // audio buffer
   std::vector<uint8_t> samps(AudioBufferSize);
-  std::vector<double> freqs(AudioBufferSize / 2);
+  std::vector<double> freqs(AudioBufferSize);
   uint8_t * ptr = samps.data();
   while(_run)
   {

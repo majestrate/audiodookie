@@ -6,7 +6,7 @@
 #include <vector>
 
 
-static constexpr size_t AudioBufferSize = 1024 * 2;
+static constexpr size_t AudioBufferSize = 1024;
 
 struct IAudioSource
 {
