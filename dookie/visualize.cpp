@@ -15,9 +15,9 @@ void Visualizer::Visualize(const std::vector<uint8_t> & samps, const std::vector
     for(size_t idx = 1; idx < numAmps ; ++idx)
       amp += abs(freqs[idx]);
     amp /= numAmps;
-    if(amp > 20)
+    if(amp > 15)
     {
-      R = 1;
+      R = std::max(1.0, R + 0.1);
     }
     else
       R = std::max(0.0, R - 0.1);
@@ -26,7 +26,7 @@ void Visualizer::Visualize(const std::vector<uint8_t> & samps, const std::vector
     cairo_fill(ctx.cairo);
     for(const auto & samp : samps)
     {
-      sum += abs(samp * samp);
+      sum += uint32_t{samp} * uint32_t{samp};
     }
     sum = sqrt(sum);
     sum /= samps.size();
