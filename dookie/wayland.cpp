@@ -8,6 +8,9 @@
 #include <cstring>
 #include <cairo.h>
 
+namespace dookie
+{
+
 
 Wayland::Wayland()
   : display(nullptr),
@@ -22,7 +25,7 @@ Wayland::~Wayland()
 {
   if(display)
   {
-    wl_display_disconnect(display);
+    ::wl_display_disconnect(display);
     display = nullptr;
   }
 }
@@ -31,7 +34,7 @@ bool Wayland::OpenDisplay()
 {
   if(display)
     return true;
-  display = wl_display_connect(nullptr);
+  display = ::wl_display_connect(nullptr);
   return display != nullptr;
 }
 
@@ -43,7 +46,6 @@ void Wayland::HandleRegistry(void * data,
 {
   auto * ctx = static_cast<Context *>(data);
   ctx->HandleRegistry(reg, name, iface, version);
-  ctx->RoundTrip();
 }
 
 
@@ -61,22 +63,16 @@ void Wayland::HandleRemove(void * data,
   (void) name;
 }
 
-
-void Wayland::Register(Context * ctx)
-{
-  regis = wl_display_get_registry(display);
-  wl_registry_add_listener(regis, &listener, ctx);
-  ctx->RoundTrip();
-}
-
 bool Wayland::CreateOutput(Context * ctx, wl_output * output)
 {
-  outputs.emplace_back(ctx, output);
-  if(outputs.back().Init())
+  outputs.emplace_back(std::make_shared<DisplayContext>(ctx, output));
+  auto & out = outputs.back();
+  if(out->Init())
   {
     return true;
   }
   std::cout << "failed to make output" << std::endl;
   outputs.pop_back();
   return false;
+}
 }

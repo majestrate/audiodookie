@@ -4,6 +4,8 @@
 #include <fftw3.h>
 #include <cstdint>
 
+namespace dookie
+{
 
 struct ComplexArray
 {
@@ -33,5 +35,6 @@ private:
   fftw_plan m_plan;
   
 };
+}
 
 #endif

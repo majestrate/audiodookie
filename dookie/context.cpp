@@ -6,6 +6,9 @@
 #include <unistd.h>
 #include <iostream>
 
+namespace dookie
+{
+
 
 Context::Context(const char * display, const char * fifopath) : audio(nullptr), analyzer(AudioBufferSize), timerfd(timerfd_create(CLOCK_MONOTONIC, TFD_CLOEXEC)), _run(false), monitor(display), audiodev(fifopath)
 {
@@ -17,17 +20,19 @@ Context::~Context()
 
 bool Context::Connect()
 {
-  return wl.OpenDisplay();
+  wl = std::make_shared<Wayland>();
+  return wl->OpenDisplay();
 }
 
 void Context::RoundTrip()
 {
-  wl_display_roundtrip(wl.display);
+  ::wl_display_roundtrip(wl->display);
 }
 
 void Context::Register()
 {
-  wl.Register(this);
+  wl->regis = ::wl_display_get_registry(wl->display);
+  ::wl_registry_add_listener(wl->regis, &wl->listener, this);
   RoundTrip();
 }
 
@@ -75,7 +80,7 @@ void Context::Stop()
 {
   _run = false;
   ::close(timerfd);
-  wl.Close();
+  wl->Close();
 }
 
 bool 
@@ -91,7 +96,7 @@ int Context::RunMainLoop()
   constexpr size_t _AUDIO_EVENT = 2;
   int polled = 0;
 	pollfd events[3] = {0};
-  events[_WAYLAND_EVENT].fd = wl_display_get_fd(wl.display);
+  events[_WAYLAND_EVENT].fd = wl_display_get_fd(wl->display);
   events[_WAYLAND_EVENT].events = POLLIN;
   events[_TIMER_EVENT].fd = timerfd;
   events[_TIMER_EVENT].events = POLLIN;
@@ -103,11 +108,11 @@ int Context::RunMainLoop()
   uint8_t * ptr = samps.data();
   while(_run)
   {
-    while (wl_display_prepare_read(wl.display) != 0)
+    while (wl_display_prepare_read(wl->display) != 0)
     {
-      wl_display_dispatch_pending(wl.display);
+      wl_display_dispatch_pending(wl->display);
     }
-    wl_display_flush(wl.display);
+    wl_display_flush(wl->display);
     int polled;
     TryOpenAudio();
     if(audio)
@@ -120,14 +125,14 @@ int Context::RunMainLoop()
       polled = poll(events, 2, -1);
 		if (polled < 0)
     {
-			wl_display_cancel_read(wl.display);
+			wl_display_cancel_read(wl->display);
 			if (errno == EINTR)
       	continue;
 			break;
 		}
 		if (events[_WAYLAND_EVENT].revents & POLLIN)
     {
-			if (wl_display_read_events(wl.display) != 0)
+			if (wl_display_read_events(wl->display) != 0)
       {
         std::cout << "wl_display read events != 0" << std::endl;
 				if (errno == 104)
@@ -143,7 +148,7 @@ int Context::RunMainLoop()
       }
 		}
 		else
-			wl_display_cancel_read(wl.display);
+			wl_display_cancel_read(wl->display);
 
 		if (!_run) 
 			break;
@@ -163,11 +168,11 @@ int Context::RunMainLoop()
         }
         if(dlt == 0)
         {
-          if(wl.outputs.size())
+          if(wl->outputs.size())
           {
             analyzer.Analyze(samps.data(), freqs);
-            for(auto & out : wl.outputs)
-              visualizer.Visualize(samps, freqs, out);
+            for(auto & out : wl->outputs)
+              visualizer.Visualize(samps, freqs, *out);
             RoundTrip();
           }
           else
@@ -208,17 +213,17 @@ void Context::HandleRegistry(wl_registry * reg,
   std::cout << "handle registry: " << interface << std::endl;
   if(strcmp(interface, wl_compositor_interface.name) == 0)
   {
-    wl.compositor = static_cast<wl_compositor*>(wl_registry_bind(reg, name, &wl_compositor_interface, 3));
+    wl->compositor = static_cast<wl_compositor*>(wl_registry_bind(reg, name, &wl_compositor_interface, 3));
   }
   else if (strcmp(interface, wl_shm_interface.name) == 0)
   {
-		wl.shm = static_cast<wl_shm*>(wl_registry_bind(reg, name, &wl_shm_interface, 1));
+		wl->shm = static_cast<wl_shm*>(wl_registry_bind(reg, name, &wl_shm_interface, 1));
 	}
 	else if (strcmp(interface, wl_output_interface.name) == 0)
   {
 		wl_output * output = static_cast<wl_output*>(wl_registry_bind(
                                                    reg, name, &wl_output_interface, ver));
-		if(wl.CreateOutput(this, output))
+		if(wl->CreateOutput(this, output))
     {
       std::cout << "we created an output" << std::endl;
     }
@@ -230,12 +235,13 @@ void Context::HandleRegistry(wl_registry * reg,
 	}
 	else if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0)
   {
-		wl.output_manager = static_cast<zxdg_output_manager_v1*>(wl_registry_bind(
+		wl->output_manager = static_cast<zxdg_output_manager_v1*>(wl_registry_bind(
                                                             reg, name, &zxdg_output_manager_v1_interface, 2));
 	}
 	else if (strcmp(interface, zwlr_layer_shell_v1_interface.name) == 0)
   {
-		wl.layer_shell = static_cast<zwlr_layer_shell_v1*>(wl_registry_bind(
+		wl->layer_shell = static_cast<zwlr_layer_shell_v1*>(wl_registry_bind(
                                                          reg, name, &zwlr_layer_shell_v1_interface, 1));
 	}
+}
 }

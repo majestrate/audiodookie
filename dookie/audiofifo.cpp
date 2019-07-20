@@ -10,6 +10,9 @@
 #include <thread>
 #include <functional>
 
+namespace dookie
+{
+
 struct FifoAudio : public IAudioSource
 {
   FifoAudio() : fd(-1)
@@ -131,4 +134,5 @@ std::unique_ptr<IAudioSource> CreateAudioByName(const char * cname)
     return std::make_unique<PA_Fifo>();
   else
     return std::make_unique<FifoAudio>();
+}
 }

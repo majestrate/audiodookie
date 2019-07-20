@@ -6,6 +6,9 @@
 #include <vector>
 
 
+namespace dookie
+{
+
 static constexpr size_t AudioBufferSize = 1024;
 
 struct IAudioSource
@@ -26,5 +29,6 @@ struct IAudioSource
 
 std::unique_ptr<IAudioSource> CreateAudioByName(const char * name);
 
+}
 
 #endif

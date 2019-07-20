@@ -7,6 +7,9 @@
 #include <cstring>
 #include <cairo.h>
 
+namespace dookie
+{
+
 static void ConfigureSurface(void * data, zwlr_layer_surface_v1* surface, uint32_t serial, uint32_t w, uint32_t h) {
   std::cout << "configure layer surface" << std::endl;
   static_cast<DisplayContext*>(data)->ConfigureLayerSurface(surface, serial, w, h);
@@ -50,32 +53,27 @@ static void XDGDone(void *, struct zxdg_output_v1 * out)
 static void XDGNOP(void * , struct zxdg_output_v1 *, int32_t, int32_t) {}
 
 
-
-wl_output_listener DisplayContext::output_listener = {
-  &OnIDKLOL,
-  &OnMode,
-  &CloseOutput,
-  &GotScale,
-};
-
-zxdg_output_v1_listener DisplayContext::xdg_out_listener = {
-  &XDGNOP,
-  &XDGNOP,
-  &XDGDone,
-  &XDGName,
-  &XDGDesc
-};
-
-zwlr_layer_surface_v1_listener DisplayContext::layer_surface_listener = {
-  &ConfigureSurface,
-  &CloseSurface
-};
-
-
 DisplayContext::DisplayContext(Context * c, wl_output * out) :
   ctx(c),
   output(out)
 {
+  output_listener = {
+    &OnIDKLOL,
+    &OnMode,
+    &CloseOutput,
+    &GotScale,
+  };
+  xdg_out_listener = {
+    &XDGNOP,
+    &XDGNOP,
+    &XDGDone,
+    &XDGName,
+    &XDGDesc
+  };
+  layer_surface_listener = {
+    &ConfigureSurface,
+    &CloseSurface
+  };
 }
 
 void
@@ -89,21 +87,19 @@ bool
 DisplayContext::Init()
 {
   std::cout << "init display" << std::endl;
-  if(ctx->wl.layer_shell == nullptr)
+  if(ctx->wl->layer_shell == nullptr)
   {
     std::cout << "no layer shell" << std::endl;
                                      return false;
   }
   wl_output_add_listener(output, &output_listener, this);
-  ctx->RoundTrip();
-  surface = wl_compositor_create_surface(ctx->wl.compositor);
+  surface = wl_compositor_create_surface(ctx->wl->compositor);
   if(surface == nullptr)
   {
     std::cout << "could not create surface for output" << std::endl;
     return false;
   }
-  ctx->RoundTrip();
-  wl_region * input_region = wl_compositor_create_region(ctx->wl.compositor);
+  wl_region * input_region = wl_compositor_create_region(ctx->wl->compositor);
   if(input_region == nullptr)
   {
     std::cout << "could not create input region for output" << std::endl;
@@ -111,7 +107,7 @@ DisplayContext::Init()
   }
   wl_surface_set_input_region(surface, input_region);
   wl_region_destroy(input_region);
-  layer_surface = zwlr_layer_shell_v1_get_layer_surface(ctx->wl.layer_shell, surface, output, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "dookie");
+  layer_surface = zwlr_layer_shell_v1_get_layer_surface(ctx->wl->layer_shell, surface, output, ZWLR_LAYER_SHELL_V1_LAYER_BACKGROUND, "dookie");
   if(layer_surface == nullptr)
   {
     std::cout << "failed to create layer surface for output" << std::endl;
@@ -152,7 +148,9 @@ void DisplayContext::ConfigureLayerSurface(zwlr_layer_surface_v1 * lsurface, uin
  
   width = w;
   height = h;
-  wl_region * opaque = wl_compositor_create_region(ctx->wl.compositor);
+  std::cout << "we have " << width << "x" << height << std::endl;
+  
+  wl_region * opaque = wl_compositor_create_region(ctx->wl->compositor);
   wl_region_add(opaque, 0, 0, w, h);
   wl_surface_set_opaque_region(surface, opaque);
   wl_region_destroy(opaque);
@@ -163,7 +161,6 @@ void DisplayContext::ConfigureLayerSurface(zwlr_layer_surface_v1 * lsurface, uin
   }
   else
     std::cout << " failed to make buffers" << std::endl;
-  ctx->RoundTrip();
 }
 
 
@@ -225,13 +222,14 @@ bool DisplayContext::CreateBuffers()
     ::close(fd);
     return false;
   }
-  wl_shm_pool * pool = wl_shm_create_pool(ctx->wl.shm, fd, sz);
+  wl_shm_pool * pool = wl_shm_create_pool(ctx->wl->shm, fd, sz);
   buffer = wl_shm_pool_create_buffer(pool, 0, width, height, stride, WL_SHM_FORMAT_ARGB8888);
   wl_shm_pool_destroy(pool);
   ::close(fd);
   cairo_surface = cairo_image_surface_create_for_data(static_cast<uint8_t*>(data), CAIRO_FORMAT_ARGB32, width, height, stride);
   cairo = cairo_create(cairo_surface);
   std::cout << "made buffer of size " << sz << std::endl;
-  ctx->RoundTrip();
   return true;
+}
+
 }

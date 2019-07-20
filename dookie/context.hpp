@@ -5,6 +5,9 @@
 #include "analyze.hpp"
 #include "visualize.hpp"
 
+namespace dookie
+{
+
 struct Context
 {
   Context(const char * monitorName, const char * fifopath);
@@ -29,7 +32,7 @@ struct Context
                       const char * iface,
                       uint32_t version);
 
-  Wayland wl;
+  std::shared_ptr<Wayland> wl;
   
   void Stop();
   
@@ -50,5 +53,5 @@ private:
   const char * monitor;
   const char * audiodev;
 };
-
+}
 #endif

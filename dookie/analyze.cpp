@@ -1,6 +1,9 @@
 #include "analyze.hpp"
 #include <iostream>
 
+namespace dookie
+{
+
 Analyzer::Analyzer(size_t N) : m_input(N), m_output(N)
 {
   m_plan = fftw_plan_dft_r2c_1d(N, m_input.data(), m_output, FFTW_MEASURE);
@@ -25,7 +28,7 @@ ComplexArray::~ComplexArray()
 void ComplexArray::ToVector(std::vector<double> & out) const
 {
   for(size_t idx = 1; idx < (sz - 1); ++idx)
-    out[idx-1] = abs(data[idx][0]); // real
+    out[idx-1] = abs(data[idx][1]); // real
 }
 
 void ComplexArray::Put(const uint8_t * frames)
@@ -45,4 +48,5 @@ void Analyzer::Analyze(uint8_t *frames, std::vector<double> & out)
   }
   fftw_execute(m_plan);
   m_output.ToVector(out);
+}
 }

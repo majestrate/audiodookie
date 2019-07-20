@@ -4,6 +4,9 @@
 #include "output.hpp"
 #include <vector>
 
+namespace dookie
+{
+
 struct Context;
 struct Wayland
 {
@@ -29,7 +32,7 @@ struct Wayland
   void BeforeDraw(Context * ctx);
   void DamageFull(Context * ctx);
 
-  std::vector<DisplayContext> outputs;
+  std::vector<DisplayContext_ptr> outputs;
   wl_display * display = nullptr;
   wl_registry * regis = nullptr;
   wl_compositor * compositor = nullptr;
@@ -40,5 +43,6 @@ struct Wayland
   wl_registry_listener listener;
 
 };
+}
 
 #endif
